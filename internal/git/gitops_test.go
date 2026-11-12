@@ -1917,3 +1917,27 @@ func TestIntegration_Push_FallsBackWithoutPushOptionSupport(t *testing.T) {
 	require.NoError(t, d.Push("origin", []string{"b1"}, true, true))
 	assert.Equal(t, gitExec(t, cloneDir, "rev-parse", "b1"), remoteBranchSHA(t, bareDir, "b1"))
 }
+
+func TestIntegration_HasUncommittedChangesUntrackedDirectories(t *testing.T) {
+	for _, tt := range []struct {
+		name      string
+		ignored   bool
+		wantDirty bool
+	}{
+		{name: "untracked directory", wantDirty: true},
+		{name: "directory containing only ignored files", ignored: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			ops, dir := setupWorktreeRepo(t)
+			gitExec(t, dir, "config", "status.showUntrackedFiles", "no")
+			require.NoError(t, os.MkdirAll(filepath.Join(dir, "notes", "nested"), 0755))
+			writeFile(t, dir, "notes/nested/local.txt", "local content\n")
+			if tt.ignored {
+				writeFile(t, dir, ".git/info/exclude", "*.txt\n")
+			}
+			dirty, err := ops.HasUncommittedChanges()
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantDirty, dirty)
+		})
+	}
+}

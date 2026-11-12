@@ -844,7 +844,9 @@ func (d *defaultOps) IsCherryPickInProgress() (bool, error) {
 }
 
 func (d *defaultOps) HasUncommittedChanges() (bool, error) {
-	out, err := d.run("status", "--porcelain", "--untracked-files=all")
+	// Directory entries are sufficient to detect untracked files; enumerating
+	// every file inside them is expensive in large repositories.
+	out, err := d.run("status", "--porcelain", "--untracked-files=normal")
 	if err != nil {
 		return false, err
 	}
